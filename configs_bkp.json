@@ -1,0 +1,31 @@
+{
+    "dispositivos": {
+        "res_proyector_w": 800,
+        "res_proyector_h": 600,
+        "resulucion_camara_w": 1280,
+        "resulucion_camara_h": 720
+    },
+    "marcadores": {
+        "ancho_marcador": 100,
+        "separacion_al_borde": 10
+    },
+    "resultados": {
+        "matriz_transformacion": [
+            [
+                1.111501252782855,
+                -0.059196563391806706,
+                -217.02376639888968
+            ],
+            [
+                0.07882513775495026,
+                1.1310131031137334,
+                -127.5142165610884
+            ],
+            [
+                1.4730348808694727e-05,
+                2.4795017564742394e-05,
+                1.0
+            ]
+        ]
+    }
+}

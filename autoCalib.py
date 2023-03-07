@@ -2,6 +2,7 @@ import numpy as np
 import cv2, PIL
 from cv2 import aruco
 import time
+import json
 
 """
 Genera una plantilla con 4 marcadores a 10px de las esquinas
@@ -9,24 +10,55 @@ Inicia captura de webcam y espera que se apriete 'd' para detectar marcadores
 si detecta marcadores, genera matriz homografica y muestra caputra corregida
 --
 Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
+
+
 """
 
-res_proyector_w = 800 
-res_proyector_h = 600
-separacion_al_borde = 10
-ancho_marcador = 100
-resulucion_camara_w = 800
-resulucion_camara_h = 600
+def lee_json(ruta):
+    """
+    Lee el archivo de configuración y devuelve las variables que
+    hay adentro
 
-def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde=10,ancho_marcador=100):
+    Arg.
+    Ruta del archivo de configuración
+
+    Return.
+    Varialbes de configuración
     """
-    Genera una plantilla con 4 marcadores ARuco 4x4_50 a una distancia dada de las esquina
-    Funciona con OpenCV 4.7, no como todos los ejemplos que andan dando vuelta.
-    Devuelve:
-        imagen con la plantilla
-        lista con coodenadas de centros de marcadores
+    with open(ruta, 'r') as f:
+        configs = json.load(f)
+    # accede a los datos en el diccionario generado
+    res_proyector_w = configs["dispositivos"]["res_proyector_w"]
+    res_proyector_h = configs["dispositivos"]["res_proyector_h"]
+    resulucion_camara_w = configs["dispositivos"]["resulucion_camara_w"]
+    resulucion_camara_h = configs["dispositivos"]["resulucion_camara_h"]
+    ancho_marcador = configs["marcadores"]["ancho_marcador"]
+    separacion_al_borde = configs["marcadores"]["separacion_al_borde"]
+    return (res_proyector_w,res_proyector_h,resulucion_camara_w,resulucion_camara_h,ancho_marcador,separacion_al_borde)
+
+def escribe_json(ruta , matriz):
     """
-    # defino el diccionario
+    Actualiza la variable de matriz de transformación en el archivo Json
+    para que no tenga que quede guardada la calibración y no tenga que repetirse
+    
+    IMPORTANTE: serializo la matriz, array de numpy, para poder guardarla en el JSON,
+    para usarla posiblemente tenga que volverla a convertir a un array de numy
+    """
+
+    with open(ruta, 'r') as f: #r de read
+        data = json.load(f)
+    
+    matriz = matriz.tolist() #np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    data['resultados']['matriz_transformacion'] = matriz
+
+    with open('configs.json', 'w') as f: #w de write ;)
+        json.dump(data, f, indent=4)
+
+def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde=10,ancho_marcador=100): # type: (int, int, int, int) -> Tuple[np.ndarray, List[Tuple[int, int]]]
+    """
+    Genera una plantilla con 4 marcadores ARuco 4x4_50 a una distancia dada de las esquinas. 
+    Devuelve la imagen con la plantilla y una lista con las coordenadas de centros de marcadores.
+    """
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50) 
 
     # creo una imagen para el fondo blanco
@@ -142,12 +174,16 @@ def get_homography_matrix(source, destination):
     A = np.array(A)
     h = np.linalg.lstsq(A, b,rcond=None)[0]
     h = np.concatenate((h, [1]), axis=-1)
-    return np.reshape(h, (3, 3))
+    h = np.reshape(h, (3, 3))
+    return h
 
 
 
 if __name__ == '__main__':
 
+    # lee la config de JSON
+    res_proyector_w, res_proyector_h, resulucion_camara_w, resulucion_camara_h, ancho_marcador, separacion_al_borde = lee_json('configs.json')
+    
     # Crear ventana
     cv2.namedWindow('Plantilla')
     cv2.namedWindow('Captura')
@@ -171,7 +207,7 @@ if __name__ == '__main__':
     coord_detectados = []
     ret, frame = cap.read()
 
-     # Abre camara
+    # loop hasta que se caputura y detecta o sale con 'q'
     while coord_detectados == []:
         ret, frame = cap.read()
         cv2.imshow("Captura",frame)
@@ -183,7 +219,13 @@ if __name__ == '__main__':
    
     print (coord_detectados)
     mtx = get_homography_matrix(coord_detectados, coord_marcadores)
+
+    print (mtx)
+    escribe_json ('configs.json', mtx)
+    
     destination_image = cv2.warpPerspective(img_detectado, mtx, (res_proyector_w, res_proyector_h))
+    
     cv2.imshow("Corregido",destination_image)
     cv2.waitKey(0)
+    cap.release()
     cv2.destroyAllWindows()
