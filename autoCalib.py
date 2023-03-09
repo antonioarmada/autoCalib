@@ -34,7 +34,9 @@ def lee_json(ruta):
     resulucion_camara_h = configs["dispositivos"]["resulucion_camara_h"]
     ancho_marcador = configs["marcadores"]["ancho_marcador"]
     separacion_al_borde = configs["marcadores"]["separacion_al_borde"]
-    return (res_proyector_w,res_proyector_h,resulucion_camara_w,resulucion_camara_h,ancho_marcador,separacion_al_borde)
+    matriz= configs['resultados']['matriz_transformacion']
+    return (res_proyector_w,res_proyector_h,resulucion_camara_w,resulucion_camara_h, \
+            ancho_marcador,separacion_al_borde,matriz)
 
 def escribe_json(ruta , matriz):
     """
@@ -181,8 +183,12 @@ def get_homography_matrix(source, destination):
 
 if __name__ == '__main__':
 
-    # lee la config de JSON
-    res_proyector_w, res_proyector_h, resulucion_camara_w, resulucion_camara_h, ancho_marcador, separacion_al_borde = lee_json('configs.json')
+    # lee la config de JSON -
+    # si bien la funcion devuelve la matriz guardada, en este
+    # código busco re-generarla. Está asi para utilizar la misma
+    # función en otro código
+    res_proyector_w, res_proyector_h, resulucion_camara_w, resulucion_camara_h, \
+        ancho_marcador, separacion_al_borde, matriz = lee_json('configs.json')
     
     # Crear ventana
     cv2.namedWindow('Plantilla')
