@@ -2,8 +2,9 @@
     "dispositivos": {
         "res_proyector_w": 800,
         "res_proyector_h": 600,
-        "resulucion_camara_w": 1280,
-        "resulucion_camara_h": 720
+        "resolucion_camara_w": 1280,
+        "resolucion_camara_h": 720,
+        "id_camara": 1
     },
     "marcadores": {
         "ancho_marcador": 100,

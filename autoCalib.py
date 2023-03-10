@@ -3,6 +3,7 @@ import cv2, PIL
 from cv2 import aruco
 import time
 import json
+import pyglet
 
 """
 Genera una plantilla con 4 marcadores a 10px de las esquinas
@@ -13,6 +14,28 @@ Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
 
 
 """
+# --------- Funciones de Interfaz  ------------------------------
+
+# Función para actualizar la ventana con cada fotograma de video
+def update(dt):
+    ret, frame = cap.read()
+    if ret:
+        frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
+        frame_sprite.image = frame_pg
+
+# Configurar el evento de dibujado del monitor
+    @win_monitor.event
+    def on_draw():
+        win_monitor.clear()
+        frame_sprite.draw()
+
+# Configurar el evento de dibujado del monitor
+    @win_proyector.event
+    def on_draw():
+        win_proyector.clear()
+        plantilla_sprite.draw()
+
+# --------- Funciones de Planatilla y transformación ------------
 
 def lee_json(ruta):
     """
@@ -30,12 +53,14 @@ def lee_json(ruta):
     # accede a los datos en el diccionario generado
     res_proyector_w = configs["dispositivos"]["res_proyector_w"]
     res_proyector_h = configs["dispositivos"]["res_proyector_h"]
-    resulucion_camara_w = configs["dispositivos"]["resulucion_camara_w"]
-    resulucion_camara_h = configs["dispositivos"]["resulucion_camara_h"]
+    resolucion_camara_w = configs["dispositivos"]["resolucion_camara_w"]
+    resolucion_camara_h = configs["dispositivos"]["resolucion_camara_h"]
+    id_camara = configs["dispositivos"]["id_camara"]
     ancho_marcador = configs["marcadores"]["ancho_marcador"]
     separacion_al_borde = configs["marcadores"]["separacion_al_borde"]
     matriz= configs['resultados']['matriz_transformacion']
-    return (res_proyector_w,res_proyector_h,resulucion_camara_w,resulucion_camara_h, \
+    return (res_proyector_w,res_proyector_h, \
+            resolucion_camara_w,resolucion_camara_h, id_camara, \
             ancho_marcador,separacion_al_borde,matriz)
 
 def escribe_json(ruta , matriz):
@@ -180,16 +205,77 @@ def get_homography_matrix(source, destination):
     return h
 
 
-
 if __name__ == '__main__':
 
     # lee la config de JSON -
     # si bien la funcion devuelve la matriz guardada, en este
     # código busco re-generarla. Está asi para utilizar la misma
     # función en otro código
-    res_proyector_w, res_proyector_h, resulucion_camara_w, resulucion_camara_h, \
+    res_proyector_w, res_proyector_h, resolucion_camara_w, resolucion_camara_h, id_camara, \
         ancho_marcador, separacion_al_borde, matriz = lee_json('configs.json')
+
+
+    # Obtener una lista de todas las pantallas disponibles
+    screens = pyglet.canvas.Display().get_screens()
+    print (screens)
+
+    # Configurar las ventanas de Pyglet las dos pantallas
+    win_monitor = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
+                                   screen=screens[0], caption='Captura RAW')
+    win_proyector = pyglet.window.Window(screens[1].width, screens[1].height,
+                               fullscreen=False, # cambiar a TRUE en implementacion
+                               resizable=True, 
+                               screen=screens[1],
+                               caption='Plantilla')
+    # Configurar la posición de la ventana en la pantalla secundaria
+    win_proyector.set_location(screens[1].x,screens[1].y)
+
     
+    #sacar del Json cuando esto funcione
+    res_proyector_w = screens[1].width
+    res_proyector_h = screens[1].height
+
+    # Abre camara
+    try:
+        cap = cv2.VideoCapture(id_camara)  # lo saca del JSON 0 si hay una camara
+        cap.set(3,resolucion_camara_w)
+        cap.set(4,resolucion_camara_h)
+        time.sleep(2)
+        print("-- CAMARA ENCONTRADA --- ")
+    except Exception as e:
+        print("-- NO SE ENCUENTRA LA CÁMARA -------")
+        print(str(e))
+        #sys.exit()
+        quit()
+
+    # Cargar la imagen inicial
+    ret, frame = cap.read()
+    if ret:
+        frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
+        frame_sprite = pyglet.sprite.Sprite(frame_pg)
+
+    # Configurar el evento de actualización de la ventana
+    pyglet.clock.schedule_interval(update, 1/30.0)
+
+    # Genero la plantilla y la convierto a imagen de PyGlet
+    plantilla, coord_marcadores = genera_plantilla(res_proyector_w, res_proyector_h,
+                                                   separacion_al_borde, ancho_marcador)
+    #plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'BGR', plantilla.tobytes())
+    # no me funciona pasarle la img de np al sprite, tampoco con blit (error:segmentatio fault)
+    # asi que grabo la img con cv2 yla vuelvo a levantar con pg, poco elegante pero funciona
+    cv2.imwrite("plantilla.jpg", plantilla)
+    plantilla_pg = pyglet.image.load("plantilla.jpg")
+    plantilla_sprite = pyglet.sprite.Sprite(plantilla_pg)
+    
+    # Iniciar la aplicación de Pyglet
+    pyglet.app.run()
+
+    # Liberar la captura de video al finalizar
+    cap.release()
+
+
+
+    """
     # Crear ventana
     cv2.namedWindow('Plantilla')
     cv2.namedWindow('Captura')
@@ -199,9 +285,9 @@ if __name__ == '__main__':
 
     # Abre camara
     try:
-        cap = cv2.VideoCapture(1)  # 0 es el ID de la cámara predeterminada
-        cap.set(3,resulucion_camara_w)
-        cap.set(4,resulucion_camara_h)
+        cap = cv2.VideoCapture(id_camara)  # lo saca del JSON 0 si hay una camara
+        cap.set(3,resolucion_camara_w)
+        cap.set(4,resolucion_camara_h)
         time.sleep(2)
         print("-- CAMARA ENCONTRADA --- ")
     except Exception as e:
@@ -235,3 +321,4 @@ if __name__ == '__main__':
     cv2.waitKey(0)
     cap.release()
     cv2.destroyAllWindows()
+    """
