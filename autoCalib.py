@@ -19,10 +19,13 @@ Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
 # Función para actualizar la ventana con cada fotograma de video
 def update(dt):
     ret, frame = cap.read()
+    # Espejar horizontalmente la captura
+    frame = cv2.flip(frame, 0)
     if ret:
         frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
         frame_sprite.image = frame_pg
-
+        detecta_marcadores(frame)
+            
 # Configurar el evento de dibujado del monitor
     @win_monitor.event
     def on_draw():
@@ -35,8 +38,25 @@ def update(dt):
         win_proyector.clear()
         plantilla_sprite.draw()
 
-# --------- Funciones de Planatilla y transformación ------------
 
+# Crear una función que maneje el evento de teclado
+def on_key_press(symbol, modifiers):
+    key = pyglet.window.key.symbol_string(symbol).lower() #por si es D
+    
+    # al presionar d se intenta la detección. 
+    if key == "d":
+        print("La tecla D ha sido presionada")
+        # no entiendo por qué toma 'frame' como global pero funciona
+        imagen, coordenadas = detecta_marcadores(frame)
+        print(coordenadas)
+        # Si devolvio las coord de los 4 marcadores
+        if not coordenadas == []:
+            print ("detectado")
+
+
+
+# --------- Funciones de Planatilla y transformación ------------
+d
 def lee_json(ruta):
     """
     Lee el archivo de configuración y devuelve las variables que
@@ -119,7 +139,11 @@ def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde
     x, y = separacion_al_borde,  res_proyector_h - separacion_al_borde - marcador.shape[0]
     plantilla[y:y+marcador.shape[0], x:x+marcador.shape[1]] = marcador
     coord_marcadores.append((x,y))
-    return plantilla, coord_marcadores
+
+    # Convertir la imagen a RGB para que funcine bien en PyGlet y otros
+    plantilla_rgb = cv2.cvtColor(plantilla, cv2.COLOR_GRAY2RGB)
+
+    return plantilla_rgb, coord_marcadores
 
 def detecta_marcadores(imagen):
     """
@@ -205,6 +229,8 @@ def get_homography_matrix(source, destination):
     return h
 
 
+# ---------  Main  ---------------------------------------
+
 if __name__ == '__main__':
 
     # lee la config de JSON -
@@ -254,19 +280,22 @@ if __name__ == '__main__':
         frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
         frame_sprite = pyglet.sprite.Sprite(frame_pg)
 
-    # Configurar el evento de actualización de la ventana
+    # Configurar el evento de actualización de la ventana de la cámara
     pyglet.clock.schedule_interval(update, 1/30.0)
 
     # Genero la plantilla y la convierto a imagen de PyGlet
     plantilla, coord_marcadores = genera_plantilla(res_proyector_w, res_proyector_h,
                                                    separacion_al_borde, ancho_marcador)
-    #plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'BGR', plantilla.tobytes())
-    # no me funciona pasarle la img de np al sprite, tampoco con blit (error:segmentatio fault)
-    # asi que grabo la img con cv2 yla vuelvo a levantar con pg, poco elegante pero funciona
-    cv2.imwrite("plantilla.jpg", plantilla)
-    plantilla_pg = pyglet.image.load("plantilla.jpg")
+    print (plantilla.dtype)
+    # Genero la imagen y su sprite de Pyglet
+    plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'RGB', plantilla.tobytes())
     plantilla_sprite = pyglet.sprite.Sprite(plantilla_pg)
     
+    # creo los manejadores de evento de teclado
+    # no uso '.on_key_press' porque es para una sola ventana
+    win_monitor.push_handlers(on_key_press)
+    win_proyector.push_handlers(on_key_press)
+
     # Iniciar la aplicación de Pyglet
     pyglet.app.run()
 
