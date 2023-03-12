@@ -1,30 +1,30 @@
 {
     "dispositivos": {
-        "res_proyector_w": 800,
-        "res_proyector_h": 600,
+        "forzar_res_proyector_w": 0,
+        "forzar_res_proyector_h": 0,
         "resolucion_camara_w": 1280,
         "resolucion_camara_h": 720,
         "id_camara": 1
     },
     "marcadores": {
-        "ancho_marcador": 150,
-        "separacion_al_borde": 30
+        "forzar_ancho_marcador": 0,
+        "forzar_separacion_al_borde": 0
     },
     "resultados": {
         "matriz_transformacion": [
             [
-                1.5392923468307562,
-                0.003789039465692953,
-                -187.1253024152227
+                1.7084768273330189,
+                0.028380143552462656,
+                -407.9091114027473
             ],
             [
-                0.013578576256486952,
-                1.5294258613713796,
-                -31.499496811897046
+                0.07753619792128386,
+                1.6539793700818457,
+                -165.96370955003172
             ],
             [
-                1.1070773492273013e-05,
-                1.3556976525676799e-05,
+                0.00011683414676694551,
+                7.458675844629337e-05,
                 1.0
             ]
         ]

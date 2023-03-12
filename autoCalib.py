@@ -14,6 +14,12 @@ si detecta marcadores, genera matriz homografica y muestra caputra corregida
 Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
 
 
+#sacar del Json cuando esto funcione -------------------
+    res_proyector_w = screens[1].width
+    res_proyector_h = screens[1].height
+
+calcular el ancho y separacion de los marcadores en relacion tamaño proyeccion
+    
 """
 # --------- Funciones de Interfaz  ------------------------------
 
@@ -85,7 +91,7 @@ def se_detectaron_marcadores(imagen, coord_detectados):
                           x=win_corregida.width//2, y=win_corregida.height//2,
                           anchor_x='center', anchor_y='center')
     # Redibujar ventana
-    win_corregida.invalidatae()
+    #win_corregida.invalidatae()
 
 
 
@@ -108,13 +114,13 @@ def lee_json(ruta):
     with open(ruta, 'r') as f:
         configs = json.load(f)
     # accede a los datos en el diccionario generado
-    res_proyector_w = configs["dispositivos"]["res_proyector_w"]
-    res_proyector_h = configs["dispositivos"]["res_proyector_h"]
+    res_proyector_w = configs["dispositivos"]["forzar_res_proyector_w"]
+    res_proyector_h = configs["dispositivos"]["forzar_res_proyector_h"]
     resolucion_camara_w = configs["dispositivos"]["resolucion_camara_w"]
     resolucion_camara_h = configs["dispositivos"]["resolucion_camara_h"]
     id_camara = configs["dispositivos"]["id_camara"]
-    ancho_marcador = configs["marcadores"]["ancho_marcador"]
-    separacion_al_borde = configs["marcadores"]["separacion_al_borde"]
+    ancho_marcador = configs["marcadores"]["forzar_ancho_marcador"]
+    separacion_al_borde = configs["marcadores"]["forzar_separacion_al_borde"]
     matriz= configs['resultados']['matriz_transformacion']
     return (res_proyector_w,res_proyector_h, \
             resolucion_camara_w,resolucion_camara_h, id_camara, \
@@ -233,7 +239,7 @@ def detecta_marcadores(imagen):
         # Imprimo un rectangulo uniendolas
         puntos = np.array(primeras_esquinas, np.int32)
         puntos = puntos.reshape((-1, 1, 2))
-        cv2.polylines(imagen,[puntos], True, (0, 255, 0), thickness=2)
+        cv2.polylines(imagen,[puntos], True, (0, 255, 0), thickness=1)
 
     else :
         # si no hay 4 marcadores imprimo cartel
@@ -301,9 +307,16 @@ if __name__ == '__main__':
     screens = pyglet.canvas.Display().get_screens()
     print (screens)
 
-    #sacar del Json cuando esto funcione
-    res_proyector_w = screens[1].width
-    res_proyector_h = screens[1].height
+    # Si no se especificaron valores para estas variables en configs.json, los genera 
+    if res_proyector_w == 0 or res_proyector_h == 0 :
+        res_proyector_w = screens[1].width
+        res_proyector_h = screens[1].height
+        print (res_proyector_w)
+    if ancho_marcador == 0:
+        ancho_marcador = int(res_proyector_w * .1)
+        print (ancho_marcador)
+    if separacion_al_borde == 0:
+        separacion_al_borde = int(ancho_marcador*.2)
 
     # Configurar las ventanas de Pyglet las dos pantallas
     win_captura = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
@@ -372,14 +385,14 @@ if __name__ == '__main__':
     win_proyector.push_handlers(on_key_press)
     win_corregida.push_handlers(on_key_press)
     
-    # Crear una instancia de SolidColorImagePattern con el color negro
+    # Pongo un fondo en la ventana de la captura para despues poder actualizarlo.
     fondo = pyglet.image.load('background.jpg')
     sprite_captura_corregida = pyglet.sprite.Sprite(fondo)
     sprite_captura_corregida.scale = max(res_proyector_w / sprite_captura_corregida.width, res_proyector_h / sprite_captura_corregida.height)
     sprite_captura_corregida.position = (res_proyector_w - sprite_captura_corregida.width) / 2, (res_proyector_h - sprite_captura_corregida.height) / 2 , 0 
 
 
-# Configurar el evento de dibujado de la ventana con la captura
+    # Configurar el evento de dibujado de la ventana con la captura
     @win_captura.event
     def on_draw():
         win_captura.clear()
@@ -387,14 +400,14 @@ if __name__ == '__main__':
         image = pyglet.image.load('captura.jpg')
         image.blit(0,0)
 
-# Configurar el evento de dibujado de la ventana con la correccion
+    # Configurar el evento de dibujado de la ventana con la correccion
     @win_corregida.event
     def on_draw():
         win_corregida.clear()
         sprite_captura_corregida.draw()
         aviso.draw()
 
-# Configurar el evento de dibujado del proyector
+    # Configurar el evento de dibujado del proyector
     @win_proyector.event
     def on_draw():
         win_proyector.clear()
@@ -408,58 +421,7 @@ if __name__ == '__main__':
     cap.release()
 
 
-
-    """
-    # Crear ventana
-    cv2.namedWindow('Plantilla')
-    cv2.namedWindow('Captura')
-    plantilla, coord_marcadores = genera_plantilla()
-    print (coord_marcadores)
-    cv2.imshow("Plantilla",plantilla)
-
-    # Abre camara
-    try:
-        cap = cv2.VideoCapture(id_camara)  # lo saca del JSON 0 si hay una camara
-        cap.set(3,resolucion_camara_w)
-        cap.set(4,resolucion_camara_h)
-        time.sleep(2)
-        print("-- CAMARA ENCONTRADA --- ")
-    except Exception as e:
-        print("-- NO SE ENCUENTRA LA CÁMARA -------")
-        print(str(e))
-        #sys.exit()
-        quit()
-
-    coord_detectados = []
-    ret, frame = cap.read()
-
-    # loop hasta que se caputura y detecta o sale con 'q'
-    while coord_detectados == []:
-        ret, frame = cap.read()
-        cv2.imshow("Captura",frame)
-        if cv2.waitKey(1) & 255 == ord('q'):
-            quit()
-        elif cv2.waitKey(1) & 255 == ord('d'):
-            img_detectado, coord_detectados = detecta_marcadores(frame)
-            cv2.imshow("Detectado",img_detectado)
-   
-    print (coord_detectados)
-    mtx = get_homography_matrix(coord_detectados, coord_marcadores)
-
-    print (mtx)
-    escribe_json ('configs.json', mtx)
-    
-    destination_image = cv2.warpPerspective(img_detectado, mtx, (res_proyector_w, res_proyector_h))
-    
-    cv2.imshow("Corregido",destination_image)
-    cv2.waitKey(0)
-    cap.release()
-    cv2.destroyAllWindows()
-    """
-
 """
-    import pyglet
-
 # Cargar la imagen original
 imagen_original = pyglet.image.load('imagen.jpg')
 
@@ -489,4 +451,25 @@ def on_key_press(symbol, modifiers):
         actualizar_imagen()
 
 pyglet.app.run()
+
+
+
+import numpy as np
+import cv2
+
+# Punto de entrada
+punto_entrada = np.array([[[x, y]]], dtype=np.float32)
+
+# Transformación homográfica
+mtx = np.array([[a, b, c], [d, e, f], [g, h, 1]])
+
+# Transformar el punto de entrada
+punto_salida = cv2.perspectiveTransform(punto_entrada, mtx)
+
+# Obtener las coordenadas del punto de salida
+X, Y = punto_salida[0][0]
+
+# Imprimir las coordenadas del punto de salida
+print(f"El punto ({x}, {y}) transformado por la matriz de transformación homográfica es: ({X}, {Y})")
 """
+
