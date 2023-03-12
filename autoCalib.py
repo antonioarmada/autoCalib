@@ -62,6 +62,8 @@ def on_key_press(symbol, modifiers):
 
 # Cuando se detectaron los marcadores         
 def se_detectaron_marcadores(imagen, coord_detectados):
+
+    global sprite_captura_corregida
     
     print ("Coord de los marcadores originales:")
     print (coord_marcadores)
@@ -74,6 +76,10 @@ def se_detectaron_marcadores(imagen, coord_detectados):
     # Generlo la imagen corregida
     captura_corregida = cv2.warpPerspective(imagen, mtx, (res_proyector_w, res_proyector_h))
     cv2.imwrite ("corregido.jpg", captura_corregida)
+    new_image = pyglet.image.load('corregido.jpg')
+    sprite_captura_corregida = pyglet.sprite.Sprite(new_image, x=0, y=0)
+    # Redibujar ventana
+    win_corregida.invalidatae()
 
 
 
@@ -357,6 +363,13 @@ if __name__ == '__main__':
     win_captura.push_handlers(on_key_press)
     win_proyector.push_handlers(on_key_press)
     win_corregida.push_handlers(on_key_press)
+    
+    # Crear una instancia de SolidColorImagePattern con el color negro
+    #black_pattern = pyglet.image.SolidColorImagePattern((0, 0, 0, 255))
+    # Crear una imagen negra de 100x100 píxeles utilizando el patrón de color negro
+    #black_image = black_pattern.create_image(100, 100)
+    fondo = pyglet.image.load('background.jpg')
+    sprite_captura_corregida = pyglet.sprite.Sprite(fondo)
 
 
 # Configurar el evento de dibujado de la ventana con la captura
@@ -371,6 +384,7 @@ if __name__ == '__main__':
     @win_corregida.event
     def on_draw():
         win_corregida.clear()
+        sprite_captura_corregida.draw()
         aviso.draw()
 
 # Configurar el evento de dibujado del proyector
@@ -436,7 +450,7 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
     """
 
-    """
+"""
     import pyglet
 
 # Cargar la imagen original
