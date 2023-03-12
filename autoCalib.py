@@ -16,37 +16,34 @@ Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
 """
 # --------- Funciones de Interfaz  ------------------------------
 
+
 # Función para actualizar la ventana con cada fotograma de video
 def update(dt):
-    ret, frame = cap.read()
-    # Espejar horizontalmente la captura
-    frame = cv2.flip(frame, 0)
-    if ret:
+    """ probe usando una textura de sprite pero habia fuga de memoria
         frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
-        frame_sprite.image = frame_pg
-        detecta_marcadores(frame)
-            
-# Configurar el evento de dibujado del monitor
-    @win_monitor.event
-    def on_draw():
-        win_monitor.clear()
-        frame_sprite.draw()
-
-# Configurar el evento de dibujado del monitor
-    @win_proyector.event
-    def on_draw():
-        win_proyector.clear()
-        plantilla_sprite.draw()
+        frame_sprite = pyglet.sprite.Sprite(frame_pg)
+        por lo que hice algo poco elegante pero funciona, grabo la captura en un archivo
+        y la dibujo con .blit no como sprite. """
+    ret,frame = cap.read()
+    #frame = cv2.flip(frame,0)
+    cv2.imwrite('captura.jpg',frame)
 
 
 # Crear una función que maneje el evento de teclado
 def on_key_press(symbol, modifiers):
+
+    if symbol == pyglet.window.key.ESCAPE:
+        pyglet.app.exit()
+
     key = pyglet.window.key.symbol_string(symbol).lower() #por si es D
     
     # al presionar d se intenta la detección. 
     if key == "d":
         print("La tecla D ha sido presionada")
-        # no entiendo por qué toma 'frame' como global pero funciona
+        #ret, frame = cap.read()
+        # Espejar horizontalmente la captura
+        #frame = cv2.flip(frame, 1)
+        frame = cv2.imread('captura.jpg')
         imagen, coordenadas = detecta_marcadores(frame)
         print(coordenadas)
         # Si devolvio las coord de los 4 marcadores
@@ -54,9 +51,8 @@ def on_key_press(symbol, modifiers):
             print ("detectado")
 
 
-
 # --------- Funciones de Planatilla y transformación ------------
-d
+
 def lee_json(ruta):
     """
     Lee el archivo de configuración y devuelve las variables que
@@ -142,6 +138,11 @@ def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde
 
     # Convertir la imagen a RGB para que funcine bien en PyGlet y otros
     plantilla_rgb = cv2.cvtColor(plantilla, cv2.COLOR_GRAY2RGB)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    x , y = int(plantilla_rgb.shape[1]/2) -350 , int(plantilla_rgb.shape[0]/2)
+    cv2.putText(plantilla_rgb,"ESTE TEXTO SE DEBE VER AL DERECHO EN LA PROYECCION Y EN LA CAPTURA",
+                (x,y), font, .5,(0,0,0),1,cv2.LINE_AA)
 
     return plantilla_rgb, coord_marcadores
 
@@ -274,27 +275,49 @@ if __name__ == '__main__':
         #sys.exit()
         quit()
 
-    # Cargar la imagen inicial
-    ret, frame = cap.read()
-    if ret:
-        frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
-        frame_sprite = pyglet.sprite.Sprite(frame_pg)
-
-    # Configurar el evento de actualización de la ventana de la cámara
-    pyglet.clock.schedule_interval(update, 1/30.0)
 
     # Genero la plantilla y la convierto a imagen de PyGlet
     plantilla, coord_marcadores = genera_plantilla(res_proyector_w, res_proyector_h,
                                                    separacion_al_borde, ancho_marcador)
-    print (plantilla.dtype)
     # Genero la imagen y su sprite de Pyglet
     plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'RGB', plantilla.tobytes())
     plantilla_sprite = pyglet.sprite.Sprite(plantilla_pg)
+    #Aca espejo la plantilla, no se si es un problema de macOS
+    #plantilla_sprite.scale_x = -1
+    plantilla_sprite.scale_y = -1
+    # al espejar el sprite cambia el punto de anclaje y se sale de la ventana, lo soluciono asi:
+    #plantilla_sprite.x = plantilla_sprite.width
+    plantilla_sprite.y = plantilla_sprite.height
+
+    # Cargar la imagen inicial
+    ret, frame = cap.read()
+    if ret:
+        # ver comentario en funcion 'update'
+        cv2.imwrite('captura.jpg',frame)
+
+    # Configurar el evento de actualización de la ventana de la cámara
+    pyglet.clock.schedule_interval(update, 1/30.0)
     
     # creo los manejadores de evento de teclado
     # no uso '.on_key_press' porque es para una sola ventana
     win_monitor.push_handlers(on_key_press)
     win_proyector.push_handlers(on_key_press)
+
+
+# Configurar el evento de dibujado del monitor
+    @win_monitor.event
+    def on_draw():
+        win_monitor.clear()
+        #frame_sprite.draw()
+        image = pyglet.image.load('captura.jpg')
+        image.blit(0,0)
+
+# Configurar el evento de dibujado del monitor
+    @win_proyector.event
+    def on_draw():
+        win_proyector.clear()
+        plantilla_sprite.draw()
+
 
     # Iniciar la aplicación de Pyglet
     pyglet.app.run()

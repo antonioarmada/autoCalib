@@ -7,8 +7,8 @@
         "id_camara": 1
     },
     "marcadores": {
-        "ancho_marcador": 100,
-        "separacion_al_borde": 10
+        "ancho_marcador": 200,
+        "separacion_al_borde": 50
     },
     "resultados": {
         "matriz_transformacion": [
