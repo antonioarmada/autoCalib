@@ -2,6 +2,7 @@ import numpy as np
 import cv2, PIL
 from cv2 import aruco
 import time
+import datetime
 import json
 import pyglet
 
@@ -29,8 +30,11 @@ def update(dt):
     cv2.imwrite('captura.jpg',frame)
 
 
+
 # Crear una función que maneje el evento de teclado
 def on_key_press(symbol, modifiers):
+
+    global aviso # para actualizar la etiqueta en la ventana de captura
 
     if symbol == pyglet.window.key.ESCAPE:
         pyglet.app.exit()
@@ -40,15 +44,40 @@ def on_key_press(symbol, modifiers):
     # al presionar d se intenta la detección. 
     if key == "d":
         print("La tecla D ha sido presionada")
-        #ret, frame = cap.read()
-        # Espejar horizontalmente la captura
-        #frame = cv2.flip(frame, 1)
         frame = cv2.imread('captura.jpg')
-        imagen, coordenadas = detecta_marcadores(frame)
-        print(coordenadas)
+        imagen, coord_detectados = detecta_marcadores(frame)
+        print(coord_detectados)
         # Si devolvio las coord de los 4 marcadores
-        if not coordenadas == []:
-            print ("detectado")
+        if not coord_detectados == []:
+            print ("Coord de los marcadores dectados:")
+            se_detectaron_marcadores(imagen,coord_detectados)
+        else:
+            print ('no se detectaron los 4 marcadores')
+            aviso = pyglet.text.Label(f'NO SE DETECTARON LOS 4 MARCADORES ({time.time()})',
+                          font_name='Arial',
+                          font_size=20,
+                          x=win_corregida.width//2, y=win_corregida.height//2,
+                          anchor_x='center', anchor_y='center')
+            
+
+# Cuando se detectaron los marcadores         
+def se_detectaron_marcadores(imagen, coord_detectados):
+    
+    print ("Coord de los marcadores originales:")
+    print (coord_marcadores)
+   
+    print ("Matriz de transformación homográfica:")
+    mtx = get_homography_matrix(coord_detectados, coord_marcadores)
+    print (mtx)
+    escribe_json ('configs.json', mtx)
+
+    # Generlo la imagen corregida
+    captura_corregida = cv2.warpPerspective(imagen, mtx, (res_proyector_w, res_proyector_h))
+    cv2.imwrite ("corregido.jpg", captura_corregida)
+
+
+
+
 
 
 # --------- Funciones de Planatilla y transformación ------------
@@ -96,6 +125,11 @@ def escribe_json(ruta , matriz):
 
     with open('configs.json', 'w') as f: #w de write ;)
         json.dump(data, f, indent=4)
+    
+    print (ruta + " ACTUALIZADO")
+
+
+
 
 def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde=10,ancho_marcador=100): # type: (int, int, int, int) -> Tuple[np.ndarray, List[Tuple[int, int]]]
     """
@@ -146,6 +180,9 @@ def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde
 
     return plantilla_rgb, coord_marcadores
 
+
+
+
 def detecta_marcadores(imagen):
     """
     Busca 4 marcadores en la imagen pasada como argumento,
@@ -195,6 +232,8 @@ def detecta_marcadores(imagen):
     # Devolviendo estaba la ganza
     return imagen, primeras_esquinas
 
+
+
 def get_homography_matrix(source, destination):
     """ Calculates the entries of the Homography matrix between two sets of matching points.
 
@@ -230,6 +269,9 @@ def get_homography_matrix(source, destination):
     return h
 
 
+
+
+
 # ---------  Main  ---------------------------------------
 
 if __name__ == '__main__':
@@ -247,17 +289,23 @@ if __name__ == '__main__':
     print (screens)
 
     # Configurar las ventanas de Pyglet las dos pantallas
-    win_monitor = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
+    win_captura = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
                                    screen=screens[0], caption='Captura RAW')
+    win_corregida = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
+                                   screen=screens[0], caption='Captura Corregida')
     win_proyector = pyglet.window.Window(screens[1].width, screens[1].height,
                                fullscreen=False, # cambiar a TRUE en implementacion
                                resizable=True, 
                                screen=screens[1],
                                caption='Plantilla')
+    
     # Configurar la posición de la ventana en la pantalla secundaria
     win_proyector.set_location(screens[1].x,screens[1].y)
 
-    
+    # Configurar la posición de las ventanas del monitor
+    win_captura.set_location(screens[0].x,screens[0].y)
+    win_corregida.set_location(screens[0].width-resolucion_camara_w,screens[0].y)
+
     #sacar del Json cuando esto funcione
     res_proyector_w = screens[1].width
     res_proyector_h = screens[1].height
@@ -283,13 +331,19 @@ if __name__ == '__main__':
     plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'RGB', plantilla.tobytes())
     plantilla_sprite = pyglet.sprite.Sprite(plantilla_pg)
     #Aca espejo la plantilla, no se si es un problema de macOS
-    #plantilla_sprite.scale_x = -1
     plantilla_sprite.scale_y = -1
     # al espejar el sprite cambia el punto de anclaje y se sale de la ventana, lo soluciono asi:
-    #plantilla_sprite.x = plantilla_sprite.width
     plantilla_sprite.y = plantilla_sprite.height
 
-    # Cargar la imagen inicial
+    # genero la etiqueta inicial en la ventana Corregida
+    aviso = pyglet.text.Label('PRESIONAR "d" PARA INICIAR LA DETECCIÓN',
+                          font_name='Arial',
+                          font_size=25,
+                          x=win_corregida.width//2, y=win_corregida.height//2,
+                          anchor_x='center', anchor_y='center')
+
+
+    # Cargar la captura inicial
     ret, frame = cap.read()
     if ret:
         # ver comentario en funcion 'update'
@@ -300,19 +354,26 @@ if __name__ == '__main__':
     
     # creo los manejadores de evento de teclado
     # no uso '.on_key_press' porque es para una sola ventana
-    win_monitor.push_handlers(on_key_press)
+    win_captura.push_handlers(on_key_press)
     win_proyector.push_handlers(on_key_press)
+    win_corregida.push_handlers(on_key_press)
 
 
-# Configurar el evento de dibujado del monitor
-    @win_monitor.event
+# Configurar el evento de dibujado de la ventana con la captura
+    @win_captura.event
     def on_draw():
-        win_monitor.clear()
+        win_captura.clear()
         #frame_sprite.draw()
         image = pyglet.image.load('captura.jpg')
         image.blit(0,0)
 
-# Configurar el evento de dibujado del monitor
+# Configurar el evento de dibujado de la ventana con la correccion
+    @win_corregida.event
+    def on_draw():
+        win_corregida.clear()
+        aviso.draw()
+
+# Configurar el evento de dibujado del proyector
     @win_proyector.event
     def on_draw():
         win_proyector.clear()
@@ -374,3 +435,37 @@ if __name__ == '__main__':
     cap.release()
     cv2.destroyAllWindows()
     """
+
+    """
+    import pyglet
+
+# Cargar la imagen original
+imagen_original = pyglet.image.load('imagen.jpg')
+
+# Crear una ventana y un sprite de la imagen
+ventana = pyglet.window.Window()
+sprite = pyglet.sprite.Sprite(imagen_original)
+
+# Dibujar el sprite en la ventana
+@ventana.event
+def on_draw():
+    ventana.clear()
+    sprite.draw()
+
+# Función para actualizar la imagen de la ventana
+def actualizar_imagen():
+    # Cargar la nueva imagen
+    nueva_imagen = pyglet.image.load('nueva_imagen.jpg')
+    # Actualizar el sprite con la nueva imagen
+    sprite.image = nueva_imagen
+    # Actualizar la imagen de la ventana con el nuevo sprite
+    ventana.set_image(sprite.image.get_texture())
+
+# Ejecutar la función de actualización al presionar la tecla "U"
+@ventana.event
+def on_key_press(symbol, modifiers):
+    if symbol == pyglet.window.key.U:
+        actualizar_imagen()
+
+pyglet.app.run()
+"""
