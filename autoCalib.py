@@ -63,7 +63,7 @@ def on_key_press(symbol, modifiers):
 # Cuando se detectaron los marcadores         
 def se_detectaron_marcadores(imagen, coord_detectados):
 
-    global sprite_captura_corregida
+    global sprite_captura_corregida, aviso
     
     print ("Coord de los marcadores originales:")
     print (coord_marcadores)
@@ -78,6 +78,12 @@ def se_detectaron_marcadores(imagen, coord_detectados):
     cv2.imwrite ("corregido.jpg", captura_corregida)
     new_image = pyglet.image.load('corregido.jpg')
     sprite_captura_corregida = pyglet.sprite.Sprite(new_image, x=0, y=0)
+    # borro el aviso
+    aviso = pyglet.text.Label("",
+                          font_name='Arial',
+                          font_size=20,
+                          x=win_corregida.width//2, y=win_corregida.height//2,
+                          anchor_x='center', anchor_y='center')
     # Redibujar ventana
     win_corregida.invalidatae()
 
@@ -290,14 +296,19 @@ if __name__ == '__main__':
         ancho_marcador, separacion_al_borde, matriz = lee_json('configs.json')
 
 
+
     # Obtener una lista de todas las pantallas disponibles
     screens = pyglet.canvas.Display().get_screens()
     print (screens)
 
+    #sacar del Json cuando esto funcione
+    res_proyector_w = screens[1].width
+    res_proyector_h = screens[1].height
+
     # Configurar las ventanas de Pyglet las dos pantallas
     win_captura = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
                                    screen=screens[0], caption='Captura RAW')
-    win_corregida = pyglet.window.Window(resolucion_camara_w, resolucion_camara_h,
+    win_corregida = pyglet.window.Window(res_proyector_w, res_proyector_h,
                                    screen=screens[0], caption='Captura Corregida')
     win_proyector = pyglet.window.Window(screens[1].width, screens[1].height,
                                fullscreen=False, # cambiar a TRUE en implementacion
@@ -312,9 +323,6 @@ if __name__ == '__main__':
     win_captura.set_location(screens[0].x,screens[0].y)
     win_corregida.set_location(screens[0].width-resolucion_camara_w,screens[0].y)
 
-    #sacar del Json cuando esto funcione
-    res_proyector_w = screens[1].width
-    res_proyector_h = screens[1].height
 
     # Abre camara
     try:
@@ -365,11 +373,10 @@ if __name__ == '__main__':
     win_corregida.push_handlers(on_key_press)
     
     # Crear una instancia de SolidColorImagePattern con el color negro
-    #black_pattern = pyglet.image.SolidColorImagePattern((0, 0, 0, 255))
-    # Crear una imagen negra de 100x100 píxeles utilizando el patrón de color negro
-    #black_image = black_pattern.create_image(100, 100)
     fondo = pyglet.image.load('background.jpg')
     sprite_captura_corregida = pyglet.sprite.Sprite(fondo)
+    sprite_captura_corregida.scale = max(res_proyector_w / sprite_captura_corregida.width, res_proyector_h / sprite_captura_corregida.height)
+    sprite_captura_corregida.position = (res_proyector_w - sprite_captura_corregida.width) / 2, (res_proyector_h - sprite_captura_corregida.height) / 2 , 0 
 
 
 # Configurar el evento de dibujado de la ventana con la captura
