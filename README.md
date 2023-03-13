@@ -8,8 +8,9 @@ En pantallas o proyecciones intereactivas es necesario que la proyección y la c
 
 Este solución lo resuelve de manera automática proyectando una plantilla que la cámara lee.
 
-Funciona con OpenCV 4.7
+Funciona con OpenCV 4.7 y PyGlet 2.x
 
+Empezar por autoCalib.py, está todo comentado.
 ____
 
 ## :uk: Automatic calibration of a Camera/Projector pair. 
@@ -18,6 +19,5 @@ In interactive displays or projections, it is necessary for the projection and c
 
 This solution automatically solves this problem by projecting a template that the camera reads.
 
-It works with OpenCV 4.7.
-
-
+It works with OpenCV 4.7 y Pyglet 2.x
+Start in autoCalib.py
