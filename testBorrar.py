@@ -1,37 +1,35 @@
 import pyglet
+import numpy as np
 
-window = pyglet.window.Window()
+# Crear el objeto Batch antes de la función update
+batch = pyglet.graphics.Batch()
 
-# Cargar imagen desde archivo en disco
-image = pyglet.image.load('background.jpg')
+# Definir la función update y pasar el objeto Batch como argumento
+def update(dt):
 
+    #poligono = pyglet.shapes.Polygon([400, 100], [500, 10], [600, 100], [550, 175], [450, 150],color=(255, 255, 255, 255))
 
+    coords = np.array( [[561 ,224],[641, 263],[601 ,347],[524, 307]],dtype=np.int32)
+    coords =  coords.tolist()
+    poligono = pyglet.shapes.Polygon(*coords,color=(255, 255, 255, 255))
 
-# Agregar sprite al lote de gráficos (batch) de la ventana
-#batch = pyglet.graphics.Batch()
+    return poligono
 
-# Crear sprite con la imagen cargada y posición en la ventana
-sprite = pyglet.sprite.Sprite(image, x=0, y=0)
+# Programar la función update para que se llame repetidamente
+pyglet.clock.schedule_interval(update, 1/30.0)
+
+# Iniciar la ventana y el bucle de eventos
+window = pyglet.window.Window(1440,1000)
 
 @window.event
 def on_draw():
     window.clear()
-    #batch.draw()
-    sprite.draw()
-
-def reload_image():
-    global sprite
-    # Cargar nueva imagen desde archivo en disco
-    new_image = pyglet.image.load('plantilla.jpg')
-    # Actualizar sprite con nueva imagen
-    sprite = pyglet.sprite.Sprite(new_image, x=0, y=0)
-    # Redibujar ventana
-    #batch.invalidate()
-
-@window.event
-def on_key_press(symbol, modifiers):
-    if symbol == pyglet.window.key.R:
-        print ("reload")
-        reload_image()
+    # Llamar a la función update y obtener los elementos de dibujo devueltos
+    poligono = update(0)
+    poligono.draw()
+    
 
 pyglet.app.run()
+
+
+

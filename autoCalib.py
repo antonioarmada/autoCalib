@@ -1,26 +1,29 @@
+from ast import List, Tuple
 import numpy as np
 import cv2, PIL
 from cv2 import aruco
 import time
-import datetime
 import json
 import pyglet
 
 """
-Genera una plantilla con 4 marcadores a 10px de las esquinas
+Genera una plantilla con 4 marcadores.
+Completar valores de resolucion e ID de cámara en configs.json
+Dejar los otros valores en 0 para detección automática
 Inicia captura de webcam y espera que se apriete 'd' para detectar marcadores
 si detecta marcadores, genera matriz homografica y muestra caputra corregida
+
+Pyglet tiene parece que tiene un  bug en que las pantallas de macOS retina 
+aparece espejada al usarla
+en la posicion de un proyector. 
+Si se hace el test con macOS cambiar la variable masOS = True
 --
 Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
-
-
-#sacar del Json cuando esto funcione -------------------
-    res_proyector_w = screens[1].width
-    res_proyector_h = screens[1].height
-
-calcular el ancho y separacion de los marcadores en relacion tamaño proyeccion
-    
+  
 """
+
+macOS = True
+
 # --------- Funciones de Interfaz  ------------------------------
 
 
@@ -29,13 +32,13 @@ def update(dt):
     """ probe usando una textura de sprite pero habia fuga de memoria
         frame_pg = pyglet.image.ImageData(frame.shape[1], frame.shape[0], 'BGR', frame.tobytes())
         frame_sprite = pyglet.sprite.Sprite(frame_pg)
-        por lo que hice algo poco elegante pero funciona, grabo la captura en un archivo
+        creo que deberia haber hecho un clear() o algo asi, salvo labels los demas elementos de pyglet
+        se borrar fuera de scope, pero no se que pasa con sprite.
+        Lo que hice fue algo poco elegante pero funciona, grabo la captura en un archivo
         y la dibujo con .blit no como sprite. """
     ret,frame = cap.read()
-    #frame = cv2.flip(frame,0)
-    cv2.imwrite('captura.jpg',frame)
-
-
+    if ret:
+        cv2.imwrite('captura.jpg',frame)
 
 # Crear una función que maneje el evento de teclado
 def on_key_press(symbol, modifiers):
@@ -90,11 +93,7 @@ def se_detectaron_marcadores(imagen, coord_detectados):
                           font_size=20,
                           x=win_corregida.width//2, y=win_corregida.height//2,
                           anchor_x='center', anchor_y='center')
-    # Redibujar ventana
-    #win_corregida.invalidatae()
-
-
-
+ 
 
 
 
@@ -195,9 +194,11 @@ def genera_plantilla(res_proyector_w=800,res_proyector_h=600,separacion_al_borde
     x , y = int(plantilla_rgb.shape[1]/2) -350 , int(plantilla_rgb.shape[0]/2)
     cv2.putText(plantilla_rgb,"ESTE TEXTO SE DEBE VER AL DERECHO EN LA PROYECCION Y EN LA CAPTURA",
                 (x,y), font, .5,(0,0,0),1,cv2.LINE_AA)
+    
+    # Grabo la plantilla por si la nececito despues o para verla mejor
+    cv2.imwrite("plantilla.jpg", plantilla_rgb)
 
     return plantilla_rgb, coord_marcadores
-
 
 
 
@@ -302,7 +303,6 @@ if __name__ == '__main__':
         ancho_marcador, separacion_al_borde, matriz = lee_json('configs.json')
 
 
-
     # Obtener una lista de todas las pantallas disponibles
     screens = pyglet.canvas.Display().get_screens()
     print (screens)
@@ -358,7 +358,8 @@ if __name__ == '__main__':
     plantilla_pg = pyglet.image.ImageData(plantilla.shape[1], plantilla.shape[0], 'RGB', plantilla.tobytes())
     plantilla_sprite = pyglet.sprite.Sprite(plantilla_pg)
     #Aca espejo la plantilla, no se si es un problema de macOS
-    plantilla_sprite.scale_y = -1
+    if macOS:
+        plantilla_sprite.scale_y = -1
     # al espejar el sprite cambia el punto de anclaje y se sale de la ventana, lo soluciono asi:
     plantilla_sprite.y = plantilla_sprite.height
 
@@ -422,37 +423,6 @@ if __name__ == '__main__':
 
 
 """
-# Cargar la imagen original
-imagen_original = pyglet.image.load('imagen.jpg')
-
-# Crear una ventana y un sprite de la imagen
-ventana = pyglet.window.Window()
-sprite = pyglet.sprite.Sprite(imagen_original)
-
-# Dibujar el sprite en la ventana
-@ventana.event
-def on_draw():
-    ventana.clear()
-    sprite.draw()
-
-# Función para actualizar la imagen de la ventana
-def actualizar_imagen():
-    # Cargar la nueva imagen
-    nueva_imagen = pyglet.image.load('nueva_imagen.jpg')
-    # Actualizar el sprite con la nueva imagen
-    sprite.image = nueva_imagen
-    # Actualizar la imagen de la ventana con el nuevo sprite
-    ventana.set_image(sprite.image.get_texture())
-
-# Ejecutar la función de actualización al presionar la tecla "U"
-@ventana.event
-def on_key_press(symbol, modifiers):
-    if symbol == pyglet.window.key.U:
-        actualizar_imagen()
-
-pyglet.app.run()
-
-
 
 import numpy as np
 import cv2
