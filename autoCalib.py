@@ -131,7 +131,10 @@ def escribe_json(ruta , matriz):
     para que no tenga que quede guardada la calibración y no tenga que repetirse
     
     IMPORTANTE: serializo la matriz, array de numpy, para poder guardarla en el JSON,
-    para usarla posiblemente tenga que volverla a convertir a un array de numy
+    para usarla posiblemente tenga que volverla a convertir a un array de numpy
+    luego de levantar el json usar:
+    matriz_array = np.array(matriz, dtype=np.float32)
+    matriz_array = matriz_array.reshape(3, 3)
     """
 
     with open(ruta, 'r') as f: #r de read
@@ -144,7 +147,6 @@ def escribe_json(ruta , matriz):
         json.dump(data, f, indent=4)
     
     print (ruta + " ACTUALIZADO")
-
 
 
 

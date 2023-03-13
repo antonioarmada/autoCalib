@@ -8,6 +8,37 @@ import pyglet
 # mios:
 from autoCalib import lee_json
 
+"""
+Prueba la calibracion realizada con autoCalib.py
+Hay que imprimir y recotar uno de los marcadores de marcadorestest.py
+Completar valores de resolucion e ID de cámara en configs.json
+Dejar los otros valores en 0 para detección automática
+Inicia captura de webcam y espera a detectar el marcador, luego
+superpone exactamente un poligono blanco
+
+Pyglet tiene parece que tiene un  bug en que las pantallas de macOS retina 
+aparece espejada al usarla en la posicion de un proyector. 
+Por lo que el movimiento del poligono esta invertido verticalmente
+--
+Funciona con OpenCV 4.7 no como todos los ejemplos que andan dando vuelta
+  
+"""
+
+
+
+def transformo_coordenadas(coord_np, matriz_array):
+
+    # me aseguro que venga con la misma profundidad que la matriz de transf
+    coord_np = coord_np.astype(np.float32)
+    # agrego una dimensión extra para poder utilizar perspectiveTransform
+    coord_np = np.expand_dims(coord_np, axis=1)
+    coord_transformada = cv2.perspectiveTransform(coord_np, matriz_array)
+    # quito la dimensión extra agregada anteriormente
+    coord_transformada = np.squeeze(coord_transformada, axis=1)
+    # la paso auna lista
+    coord_transformada_ls = coord_transformada.tolist()
+
+    return coord_transformada_ls
 
 
 # Función para actualizar la ventana con cada fotograma de video
@@ -32,14 +63,7 @@ def update(dt):
         texto_aviso = "NO SE DETECTARON MARCADORES"
         
         if esquinas.size > 0:       #uso .size porque es un array de np
-            
-            esquinas = esquinas.astype(np.float32)
-            # Agregamos una dimensión extra para poder utilizar perspectiveTransform
-            esquinas= np.expand_dims(esquinas, axis=1)
-            esquinas_corregidas = cv2.perspectiveTransform(esquinas, matriz_array)
-            # Quitamos la dimensión extra agregada anteriormente
-            esquinas_corregidas = np.squeeze(esquinas_corregidas, axis=1)
-            esquinas_ls = esquinas_corregidas.tolist()
+            esquinas_ls = transformo_coordenadas(esquinas,matriz_array)
             poligono = pyglet.shapes.Polygon(*esquinas_ls,color=(255, 255, 255, 255)) # * desempaca la lista
 
         aviso = pyglet.text.Label(texto_aviso,
@@ -93,18 +117,10 @@ if __name__ == '__main__':
     # lee la config de JSON -
     res_proyector_w, res_proyector_h, resolucion_camara_w, resolucion_camara_h, id_camara, \
         ancho_marcador, separacion_al_borde, matriz = lee_json('configs.json')
-    
-    print ("--------")
-    print (matriz)
-    print ("--------")
 
+    # transformo la matriz del json para poder usarla en .perspectiveTransform
     matriz_array = np.array(matriz, dtype=np.float32)
     matriz_array = matriz_array.reshape(3, 3)
-
-
-    print ("--------")
-    print (matriz_array)
-    print ("--------")
 
 
     # Obtener una lista de todas las pantallas disponibles
